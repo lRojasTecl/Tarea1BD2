@@ -1,0 +1,30 @@
+#!/usr/bin/perl -w
+
+use strict;
+use CGI::Carp qw(fatalsToBrowser);
+
+use LWP::UserAgent;
+use HTTP::Request;
+
+#use Getopt::Std;
+
+my %options=();
+getopts(
+
+
+my $url = "https://www.wikileaks.org/hackingteam/emails/";
+my $query = "q=Luppi&mfrom=fred";
+
+
+my $ua = LWP::UserAgent->new;
+$ua->agent("Mozilla/4.0 (compatible; MSIE 5.0; Windows 98; DigExt)");
+
+my $req = HTTP::Request->new(POST => $url);
+$req->content_type('application/x-www-form-urlencoded');
+$req->content($query);
+
+my $response = $ua->request($req);
+my $content = $response->content(); #contenido de la respuesta
+
+print "Content-type: text/html\n\n";
+print $content;
