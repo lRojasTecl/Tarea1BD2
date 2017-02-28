@@ -1,0 +1,168 @@
+#!/usr/bin/perl
+
+#-------------------------------------#
+# Tarea 1 - Bases de Datos 2          #
+# Instituto Tecnologico de Costa Rica #
+# Alejandro Rojas Jara                #
+#-------------------------------------#
+
+use strict;
+use warnings;
+
+use Getopt::Long;
+
+use strict;
+use CGI::Carp qw(fatalsToBrowser);
+use Scalar::Util qw(looks_like_number);
+use LWP::UserAgent;
+use HTTP::Request;
+use HTML::TableExtract;
+
+
+#Link de Wikileaks usado para extraer la informacion
+my $url = "https://www.wikileaks.org/hackingteam/emails/";
+
+#query varia dependiendo del tipo de busqueda.
+my $query = "";
+
+#Contenido del HTML extraido de la busqueda.
+my $content = "";
+
+#Variable que vamos a usar para extraer informacion en caso de que hayan multiples paginas	#Ej: si son 3050 resultados, hacemos 4 llamadas con maximo 1000 resultados cada llamada
+#usando count=1000 y offset=0 (1 a 1000), 1000 (1001 a 2000), 2000 y 3000.
+my $offset = 0;
+
+
+#Verificamos las opciones y llamamos checkParams si se detecta la opcion -t
+my %options = ();
+
+GetOptions (
+             "t=s" => \$options{'t'},
+            );
+
+
+my %Subs = (
+             't' => \&checkParams,
+            );
+
+while (my ($sub_name, $function) = each %Subs){
+    $function->($options{$sub_name});
+
+print "Formato incorrecto.\n";
+&show_ayuda;
+exit;
+
+}
+
+#Subrutina para verificar los parametros de entrada
+sub checkParams {
+
+
+  my $active = shift;
+  return unless $active;
+  
+  my $param1 = $active;
+  my $param2 = shift @ARGV;
+
+  
+  # En caso de encontrar parametro extra o que no concuerdan con las opciones
+  if($ARGV[0])
+  {
+	print "Los siguientes parametros no concuerdan con el formato correcto:\n";
+	foreach (@ARGV)
+	{
+	  print "$_ ";
+	}
+	&show_ayuda;
+	exit;
+  } 
+
+  else
+  {
+	#Verificamos que el tipo sea un valor numerico (evita msj de error)
+	if(not looks_like_number($param1)){
+		print "Error en parametro: $param1.\n";
+		&show_ayuda;
+		exit;
+	}
+	
+	#Vemos que tipo esta usando
+	if($param1 == 1){
+		print "Buscando texto '$param2' en todo el correo....\n";
+		#ponemos el param2 (texto a buscar) en el query
+		$query = "q=$param2&count=1000&offset=$offset";
+		&getHTML;
+		#exit;
+	}
+
+	elsif($param1 == 2){
+		print "Buscar Palabra en correo de envio. $param2 \n";
+		exit;
+	}
+
+	elsif($param1 == 3){
+		print "Buscar Palabra en correo de recibido. $param2 \n";
+		exit;
+	}
+
+	else
+	{
+		print "Tipo: Error\n";
+		exit;
+	}
+
+  }
+
+}
+
+#Subrutina para extraer el HTML del url.
+sub getHTML {
+	my $ua = LWP::UserAgent->new;
+	$ua->agent("Mozilla/4.0 (compatible; MSIE 5.0; Windows 98; DigExt)");
+
+	my $req = HTTP::Request->new(POST => $url);
+	$req->content_type('application/x-www-form-urlencoded');
+	$req->content($query);
+
+	my $response = $ua->request($req);
+	$content = $response->content(); #contenido de la respuesta
+
+	$content =~ tr/\n//d;
+	$content =~ tr/ //s;
+	
+	my $te = new HTML::TableExtract( headers => ["Doc #",
+						     "Date",
+		                                     "Subject",
+		                                     "From",
+		                                     "To" ],
+					 slice_columns => 0 );
+	$te->parse($content);
+
+	print $te;
+	 # Examine all matching tables
+	 foreach my $ts ( $te->table_states ) {
+	   foreach my $row ( $ts->rows ) {
+		foreach my $cell (@$row) {
+			next unless $cell;
+			print "$cell\n";
+		}
+		print "\n"
+	   }
+	 }
+
+	exit;
+}
+
+#Ayuda de uso.
+sub show_ayuda {
+	print "\nEl formato adecuado del programa es:\n";
+	print "	\$ perl getOpts -t tipo 'texto a buscar'\n";
+	print " Donde tipo es un valor numerico 1 , 2 o 3:\n";
+	print "  1 - Buscar palabras en todo el correo.\n";
+	print "  2 - Buscar palabras en correo de envio.\n";
+	print "  3 - Buscar palabras en correo del receptor.\n";
+	return;
+}
+
+
+
