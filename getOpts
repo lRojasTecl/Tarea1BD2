@@ -1,0 +1,40 @@
+#!/usr/bin/perl -w
+
+# a perl getopts example
+# alvin alexander, http://www.devdaily.com
+
+use strict;
+use Getopt::Std;
+
+# declare the perl command line flags/options we want to allow
+my %options=();
+getopts("et:", \%options);
+
+
+# En caso de encontrar parametro extra o que no concuerdan con las opciones
+if($ARGV[0])
+{
+	print "Los siguientes parametros no concuerdan con el formato correcto:\n";
+	foreach (@ARGV)
+	{
+	  print "$_ ";
+	}
+	  print "\nEl formato adecuado del programa es:\n";
+	  print "	\$ perl getOpts (-e) -t 'texto libre con varias palabras'\n";
+	exit;
+}
+
+
+if($options{e}and$options{t})
+{
+	print "Opcion de Expresion regular: ";
+	print "-e -t $options{t} \n" if defined $options{e};
+}
+
+elsif($options{t})
+{
+	print "Opcion de busqueda ";
+	print "-t $options{t}\n" if defined $options{t};
+}
+
+
