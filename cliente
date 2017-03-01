@@ -17,6 +17,8 @@ use Scalar::Util qw(looks_like_number);
 use LWP::UserAgent;
 use HTTP::Request;
 use HTML::TableExtract;
+use Text::CSV_XS;
+#use File::Slurp; 
 
 
 #Link de Wikileaks usado para extraer la informacion
@@ -96,12 +98,16 @@ sub checkParams {
 	}
 
 	elsif($param1 == 2){
-		print "Buscar Palabra en correo de envio. $param2 \n";
+		print "Buscando texto '$param2' en correo de envio.\n";
+		$query = "mfrom=$param2&count=1000&offset=$offset";
+		&getHTML;
 		exit;
 	}
 
 	elsif($param1 == 3){
 		print "Buscar Palabra en correo de recibido. $param2 \n";
+		$query = "q=$param2&count=1000&offset=$offset";
+		&getHTML;
 		exit;
 	}
 
@@ -137,19 +143,61 @@ sub getHTML {
 		                                     "To" ],
 					 slice_columns => 0 );
 	$te->parse($content);
+	
+	#Archivo CSV a generar
+	my $csv = Text::CSV_XS->new ({ binary => 1});
 
-	print $te;
-	 # Examine all matching tables
-	 foreach my $ts ( $te->table_states ) {
-	   foreach my $row ( $ts->rows ) {
-		foreach my $cell (@$row) {
-			next unless $cell;
-			print "$cell\n";
+	open my $csv_fh, ">", "resultados.csv" or die "resultados.csv: $!";
+
+	my @headers = ('Doc#', 'Fech', 'Subject', 'DE', 'PARA', 'Contenido');
+
+	if ($csv->combine (@headers)) {
+		print $csv_fh $csv->string, "\n";
+	}
+	else {
+		print "combine () failed on argument: ",
+		$csv->error_input, "\n";
+	}
+
+	#fila con todos las celdas de cada resultado
+	my @realRow = ();
+
+	#Contador que nos permite agregar las 6 celdas en una sola fila y agregarlas al csv
+	my $count = 0;
+	
+	# Examine all matching tables
+	foreach my $ts ( $te->table_states ) {
+		foreach my $row ( $ts->rows ) {
+			if($count == 5){
+				$realRow[$count] = @$row[2];
+				$count = 0;
+				if ($csv->combine (@realRow)) {
+					print $csv_fh $csv->string, "\n";
+					@realRow = ();
+					next;
+				}
+				else {
+					print "combine () failed on argument: ",
+					$csv->error_input, "\n";
+					exit;
+				}
+			}
+
+			foreach my $cell (@$row) {
+				if($cell){ 
+					$realRow[$count] = $cell;
+					$count = $count + 1; 
+				}
+				else {	
+					$realRow[$count] = "no info";
+					$count = $count + 1;
+				}
+		
+			}
 		}
-		print "\n"
-	   }
-	 }
-
+	}
+	print "Archivo resultados.csv creado correctamente...\n";
+	close $csv_fh or die "resultados.csv: $!";
 	exit;
 }
 
