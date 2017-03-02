@@ -6,11 +6,6 @@ use CGI::Carp qw(fatalsToBrowser);
 use LWP::UserAgent;
 use HTTP::Request;
 
-#use Getopt::Std;
-
-my %options=();
-getopts(
-
 
 my $url = "https://www.wikileaks.org/hackingteam/emails/";
 my $query = "q=Luppi&mfrom=fred";

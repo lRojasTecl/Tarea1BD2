@@ -1,8 +1,5 @@
 #!/usr/bin/perl -w
 
-# a perl getopts example
-# alvin alexander, http://www.devdaily.com
-
 use strict;
 use Getopt::Std;
 
